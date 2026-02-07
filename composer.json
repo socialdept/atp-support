@@ -1,0 +1,37 @@
+{
+    "name": "socialdept/atp-support",
+    "description": "Foundational utilities for AT Protocol packages in Laravel",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/cache": "^11.0|^12.0",
+        "guzzlehttp/guzzle": "^7.5"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "phpunit/phpunit": "^11.0",
+        "friendsofphp/php-cs-fixer": "^3.89"
+    },
+    "autoload": {
+        "psr-4": {
+            "SocialDept\\AtpSupport\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SocialDept\\AtpSupport\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SocialDept\\AtpSupport\\AtpSupportServiceProvider"
+            ],
+            "aliases": {
+                "Resolver": "SocialDept\\AtpSupport\\Facades\\Resolver"
+            }
+        }
+    }
+}
