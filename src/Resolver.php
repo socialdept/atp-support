@@ -9,6 +9,9 @@ use SocialDept\AtpSupport\Contracts\HandleResolver;
 use SocialDept\AtpSupport\Data\DidDocument;
 use SocialDept\AtpSupport\Exceptions\DidResolutionException;
 use SocialDept\AtpSupport\Exceptions\HandleResolutionException;
+use SocialDept\AtpSupport\Resolvers\AtProtoHandleResolver;
+use SocialDept\AtpSupport\Resolvers\DnsHandleResolver;
+use SocialDept\AtpSupport\Resolvers\WellKnownHandleResolver;
 
 class Resolver
 {
@@ -178,5 +181,38 @@ class Resolver
     public function clearPdsCache(string $actor): void
     {
         $this->cache->forget("pds:{$actor}");
+    }
+
+    /**
+     * Resolve a handle to a DID via DNS TXT record lookup.
+     *
+     * Queries the _atproto.{handle} TXT record for a did= value.
+     * Returns null if no valid record is found.
+     */
+    public function handleToDidViaDns(string $handle): ?string
+    {
+        return app(DnsHandleResolver::class)->attempt($handle);
+    }
+
+    /**
+     * Resolve a handle to a DID via HTTP .well-known lookup.
+     *
+     * Fetches https://{handle}/.well-known/atproto-did for a plaintext DID.
+     * Returns null if the request fails or the response is not a valid DID.
+     */
+    public function handleToDidViaWellKnown(string $handle): ?string
+    {
+        return app(WellKnownHandleResolver::class)->attempt($handle);
+    }
+
+    /**
+     * Resolve a handle to a DID via XRPC call to the PDS endpoint.
+     *
+     * Calls com.atproto.identity.resolveHandle on the configured PDS.
+     * Returns null if the request fails.
+     */
+    public function handleToDidViaXrpc(string $handle): ?string
+    {
+        return app(AtProtoHandleResolver::class)->attempt($handle);
     }
 }
