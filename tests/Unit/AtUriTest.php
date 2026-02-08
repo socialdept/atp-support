@@ -53,4 +53,100 @@ class AtUriTest extends TestCase
         $this->assertSame('app.bsky.actor.profile', $uri->collection);
         $this->assertSame('self', $uri->rkey);
     }
+
+    public function test_parse_partial_identity_uri(): void
+    {
+        $uri = AtUri::parse('at://did:plc:abc123', partial: true);
+
+        $this->assertNotNull($uri);
+        $this->assertSame('did:plc:abc123', $uri->did);
+        $this->assertNull($uri->collection);
+        $this->assertNull($uri->rkey);
+    }
+
+    public function test_parse_partial_identity_uri_with_trailing_slash(): void
+    {
+        $uri = AtUri::parse('at://did:plc:abc123/', partial: true);
+
+        $this->assertNotNull($uri);
+        $this->assertSame('did:plc:abc123', $uri->did);
+        $this->assertNull($uri->collection);
+        $this->assertNull($uri->rkey);
+    }
+
+    public function test_parse_partial_collection_uri(): void
+    {
+        $uri = AtUri::parse('at://did:plc:abc123/app.bsky.feed.post', partial: true);
+
+        $this->assertNotNull($uri);
+        $this->assertSame('did:plc:abc123', $uri->did);
+        $this->assertSame('app.bsky.feed.post', $uri->collection);
+        $this->assertNull($uri->rkey);
+    }
+
+    public function test_parse_partial_full_record_uri(): void
+    {
+        $uri = AtUri::parse('at://did:plc:abc123/app.bsky.feed.post/rk1', partial: true);
+
+        $this->assertNotNull($uri);
+        $this->assertSame('did:plc:abc123', $uri->did);
+        $this->assertSame('app.bsky.feed.post', $uri->collection);
+        $this->assertSame('rk1', $uri->rkey);
+    }
+
+    public function test_parse_partial_rejects_invalid(): void
+    {
+        $this->assertNull(AtUri::parse('not-a-uri', partial: true));
+        $this->assertNull(AtUri::parse('https://example.com', partial: true));
+        $this->assertNull(AtUri::parse('', partial: true));
+    }
+
+    public function test_parse_without_partial_still_rejects_partial_uris(): void
+    {
+        $this->assertNull(AtUri::parse('at://did:plc:abc123'));
+        $this->assertNull(AtUri::parse('at://did:plc:abc123/app.bsky.feed.post'));
+    }
+
+    public function test_is_record(): void
+    {
+        $this->assertTrue(AtUri::make('did:plc:abc', 'app.bsky.feed.post', 'rk1')->isRecord());
+        $this->assertFalse(AtUri::make('did:plc:abc', 'app.bsky.feed.post')->isRecord());
+        $this->assertFalse(AtUri::make('did:plc:abc')->isRecord());
+    }
+
+    public function test_is_collection(): void
+    {
+        $this->assertFalse(AtUri::make('did:plc:abc', 'app.bsky.feed.post', 'rk1')->isCollection());
+        $this->assertTrue(AtUri::make('did:plc:abc', 'app.bsky.feed.post')->isCollection());
+        $this->assertFalse(AtUri::make('did:plc:abc')->isCollection());
+    }
+
+    public function test_is_identity(): void
+    {
+        $this->assertFalse(AtUri::make('did:plc:abc', 'app.bsky.feed.post', 'rk1')->isIdentity());
+        $this->assertFalse(AtUri::make('did:plc:abc', 'app.bsky.feed.post')->isIdentity());
+        $this->assertTrue(AtUri::make('did:plc:abc')->isIdentity());
+    }
+
+    public function test_to_string_identity(): void
+    {
+        $this->assertSame('at://did:plc:abc', (string) AtUri::make('did:plc:abc'));
+    }
+
+    public function test_to_string_collection(): void
+    {
+        $this->assertSame('at://did:plc:abc/app.bsky.feed.post', (string) AtUri::make('did:plc:abc', 'app.bsky.feed.post'));
+    }
+
+    public function test_parse_partial_roundtrip(): void
+    {
+        $identity = 'at://did:plc:abc';
+        $this->assertSame($identity, (string) AtUri::parse($identity, partial: true));
+
+        $collection = 'at://did:plc:abc/app.bsky.feed.post';
+        $this->assertSame($collection, (string) AtUri::parse($collection, partial: true));
+
+        $record = 'at://did:plc:abc/app.bsky.feed.post/rk1';
+        $this->assertSame($record, (string) AtUri::parse($record, partial: true));
+    }
 }

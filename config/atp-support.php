@@ -53,6 +53,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Microcosm Services
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for Microcosm.blue protocol-level content discovery APIs.
+    | Constellation provides backlink indexing, and Slingshot provides fast
+    | record caching and identity resolution.
+    |
+    */
+
+    'microcosm' => [
+
+        'constellation' => [
+            'url' => env('ATP_CONSTELLATION_URL', 'https://constellation.microcosm.blue'),
+            'timeout' => env('ATP_CONSTELLATION_TIMEOUT', 10),
+        ],
+
+        'slingshot' => [
+            'url' => env('ATP_SLINGSHOT_URL', 'https://slingshot.microcosm.blue'),
+            'timeout' => env('ATP_SLINGSHOT_TIMEOUT', 5),
+        ],
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache Configuration
     |--------------------------------------------------------------------------
     |
