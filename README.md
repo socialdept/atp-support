@@ -28,6 +28,7 @@ If you're building anything on AT Protocol with Laravel, this is your starting p
 - **Shared configuration** - Common AT Protocol settings (PLC directory, PDS endpoint, public API) in one place
 - **Extensible resolvers** - Pluggable DID method resolvers with support for `did:plc` and `did:web`
 - **DNS lexicon resolution** - Discover lexicon schemas via DNS TXT records
+- **Microcosm integration** - Backlink discovery via Constellation and fast record caching via Slingshot
 
 ## Quick Example
 
@@ -213,6 +214,91 @@ $did = $resolver->lookupDns('example.com');
 $schema = $resolver->retrieveSchema($pdsEndpoint, $did, 'com.example.myrecord');
 ```
 
+### Microcosm
+
+[Microcosm.blue](https://microcosm.blue) provides protocol-level content discovery APIs for AT Protocol. ATP Support includes HTTP clients for two Microcosm services:
+
+- **Constellation** - Backlink indexing: find all records that link to a given subject
+- **Slingshot** - Fast record and identity caching
+
+#### Constellation (Backlinks)
+
+```php
+use SocialDept\AtpSupport\Microcosm\ConstellationClient;
+
+$constellation = app(ConstellationClient::class);
+
+// Find all likes on a post
+$backlinks = $constellation->getBacklinks(
+    subject: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3mcibiyf7fs2r',
+    source: 'app.bsky.feed.like:subject.uri',
+    limit: 50,
+);
+
+$backlinks->total;   // 2852
+$backlinks->records; // BacklinkReference[]
+$backlinks->cursor;  // Pagination cursor
+
+// Get just the count
+$count = $constellation->getBacklinksCount(
+    subject: 'at://did:plc:abc/app.bsky.feed.post/rk1',
+    source: 'app.bsky.feed.like:subject.uri',
+);
+
+// Get a summary of all link types pointing at a target
+$summary = $constellation->getAllLinks('at://did:plc:abc/app.bsky.feed.post/rk1');
+$summary->total();                              // Total records across all types
+$summary->forCollection('app.bsky.feed.like');  // Filter to likes
+```
+
+The `source` parameter uses `collection:path` format, where the path is the dot-notation location of the linking field within the record.
+
+#### Slingshot (Record Cache)
+
+```php
+use SocialDept\AtpSupport\Microcosm\SlingshotClient;
+
+$slingshot = app(SlingshotClient::class);
+
+// Fetch a cached record
+$record = $slingshot->getRecord('did:plc:abc', 'app.bsky.feed.post', 'rk1');
+$record->uri;   // AT-URI
+$record->cid;   // Content ID
+$record->value; // Record data
+
+// Fetch by AT-URI
+$record = $slingshot->getRecordByUri('at://did:plc:abc/app.bsky.feed.post/rk1');
+
+// Resolve a minimal identity document
+$doc = $slingshot->resolveMiniDoc('did:plc:z72i7hdynmk6r22z27h6tvur');
+$doc->did;        // did:plc:z72i7hdynmk6r22z27h6tvur
+$doc->handle;     // bsky.app
+$doc->pds;        // https://puffball.us-east.host.bsky.network
+$doc->signingKey; // Public signing key
+```
+
+#### Microcosm Facade
+
+Access both clients through a single facade:
+
+```php
+use SocialDept\AtpSupport\Facades\Microcosm;
+
+Microcosm::constellation()->getBacklinks(...);
+Microcosm::slingshot()->getRecord(...);
+```
+
+#### Microcosm Configuration
+
+Add these environment variables to customize endpoints:
+
+```env
+ATP_CONSTELLATION_URL=https://constellation.microcosm.blue
+ATP_CONSTELLATION_TIMEOUT=10
+ATP_SLINGSHOT_URL=https://slingshot.microcosm.blue
+ATP_SLINGSHOT_TIMEOUT=5
+```
+
 ### Custom DID Resolvers
 
 Register custom resolvers for additional DID methods:
@@ -262,6 +348,20 @@ $manager->register('custom', new CustomDidResolver());
 | `AtUri` | Immutable AT-URI parser (`at://did/collection/rkey`) |
 | `Nsid` | Immutable Namespace Identifier |
 | `DidDocument` | Resolved DID Document with PDS and handle access |
+
+### Microcosm
+
+| Class | Description |
+|-------|-------------|
+| `ConstellationClient` | Backlink discovery and link counting via Constellation |
+| `SlingshotClient` | Fast record and identity resolution via Slingshot |
+| `Microcosm` | Service class wrapping both clients |
+| `BacklinkReference` | Data object: `did`, `collection`, `rkey`, `uri()` |
+| `GetBacklinksResponse` | Data object: `total`, `records`, `cursor` |
+| `GetRecordResponse` | Data object: `uri`, `cid`, `value` |
+| `MiniDoc` | Data object: `did`, `handle`, `pds`, `signingKey` |
+| `LinkSummary` | Data object: `links`, `forCollection()`, `total()` |
+| `MicrocosmException` | Exception for Microcosm request failures |
 
 ### Validation
 
