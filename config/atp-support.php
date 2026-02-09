@@ -78,6 +78,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Handle Resolution
+    |--------------------------------------------------------------------------
+    |
+    | Configure the methods and order used when resolving handles to DIDs.
+    | Available methods: 'dns', 'well-known', 'xrpc'
+    |
+    | DNS TXT queries _atproto.{handle} for a did= record.
+    | HTTP .well-known fetches https://{handle}/.well-known/atproto-did.
+    | XRPC calls com.atproto.identity.resolveHandle on the PDS endpoint.
+    |
+    */
+
+    'handle_resolution' => [
+
+        // Ordered list of methods to try when resolving a handle to a DID.
+        'methods' => ['dns', 'well-known', 'xrpc'],
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache Configuration
     |--------------------------------------------------------------------------
     |

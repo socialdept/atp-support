@@ -5,10 +5,11 @@ namespace SocialDept\AtpSupport\Resolvers;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use SocialDept\AtpSupport\Concerns\HasConfig;
+use SocialDept\AtpSupport\Contracts\HandleResolutionMethod;
 use SocialDept\AtpSupport\Contracts\HandleResolver;
 use SocialDept\AtpSupport\Exceptions\HandleResolutionException;
 
-class AtProtoHandleResolver implements HandleResolver
+class AtProtoHandleResolver implements HandleResolutionMethod, HandleResolver
 {
     use HasConfig;
 
@@ -57,6 +58,15 @@ class AtProtoHandleResolver implements HandleResolver
             return $data['did'];
         } catch (GuzzleException $e) {
             throw HandleResolutionException::resolutionFailed($handle, $e->getMessage());
+        }
+    }
+
+    public function attempt(string $handle): ?string
+    {
+        try {
+            return $this->resolve($handle);
+        } catch (\Throwable) {
+            return null;
         }
     }
 

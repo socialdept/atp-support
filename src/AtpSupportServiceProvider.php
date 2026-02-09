@@ -12,6 +12,9 @@ use SocialDept\AtpSupport\Microcosm\Microcosm;
 use SocialDept\AtpSupport\Microcosm\SlingshotClient;
 use SocialDept\AtpSupport\Resolvers\AtProtoHandleResolver;
 use SocialDept\AtpSupport\Resolvers\DidResolverManager;
+use SocialDept\AtpSupport\Resolvers\DnsHandleResolver;
+use SocialDept\AtpSupport\Resolvers\HandleResolverManager;
+use SocialDept\AtpSupport\Resolvers\WellKnownHandleResolver;
 
 class AtpSupportServiceProvider extends ServiceProvider
 {
@@ -32,9 +35,23 @@ class AtpSupportServiceProvider extends ServiceProvider
             return new DidResolverManager();
         });
 
-        // Register handle resolver
+        // Register individual handle resolution methods
+        $this->app->singleton(DnsHandleResolver::class);
+        $this->app->singleton(WellKnownHandleResolver::class);
+        $this->app->singleton(AtProtoHandleResolver::class);
+
+        // Register handle resolver with configurable fallback chain
         $this->app->singleton(HandleResolver::class, function ($app) {
-            return new AtProtoHandleResolver();
+            $methods = $app['config']['atp-support.handle_resolution.methods'] ?? ['dns', 'well-known', 'xrpc'];
+
+            $resolvers = collect($methods)->map(fn (string $method) => match ($method) {
+                'dns' => $app->make(DnsHandleResolver::class),
+                'well-known' => $app->make(WellKnownHandleResolver::class),
+                'xrpc' => $app->make(AtProtoHandleResolver::class),
+                default => null,
+            })->filter()->all();
+
+            return new HandleResolverManager($resolvers);
         });
 
         // Register Resolver service
