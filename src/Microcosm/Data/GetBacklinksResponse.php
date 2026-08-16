@@ -11,7 +11,8 @@ class GetBacklinksResponse
         public readonly int $total,
         public readonly array $records,
         public readonly ?string $cursor,
-    ) {}
+    ) {
+    }
 
     public static function fromArray(array $data): self
     {

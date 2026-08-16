@@ -7,7 +7,8 @@ class Microcosm
     public function __construct(
         protected ConstellationClient $constellation,
         protected SlingshotClient $slingshot,
-    ) {}
+    ) {
+    }
 
     public function constellation(): ConstellationClient
     {

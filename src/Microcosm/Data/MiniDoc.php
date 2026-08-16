@@ -9,7 +9,8 @@ class MiniDoc
         public readonly string $handle,
         public readonly string $pds,
         public readonly string $signingKey,
-    ) {}
+    ) {
+    }
 
     public static function fromArray(array $data): self
     {
