@@ -8,7 +8,8 @@ class BacklinkReference
         public readonly string $did,
         public readonly string $collection,
         public readonly string $rkey,
-    ) {}
+    ) {
+    }
 
     public static function fromArray(array $data): self
     {

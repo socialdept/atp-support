@@ -9,7 +9,8 @@ class LinkSummary
      */
     public function __construct(
         public readonly array $links,
-    ) {}
+    ) {
+    }
 
     public static function fromArray(array $data): self
     {

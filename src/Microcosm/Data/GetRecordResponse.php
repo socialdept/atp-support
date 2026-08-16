@@ -8,7 +8,8 @@ class GetRecordResponse
         public readonly string $uri,
         public readonly string $cid,
         public readonly array $value,
-    ) {}
+    ) {
+    }
 
     public static function fromArray(array $data): self
     {
