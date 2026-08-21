@@ -1,0 +1,7 @@
+{
+    "note": "A com.atproto.space.getDelegationToken response from spaces-alpha.host.bsky.network, signed with the account #atproto key (ES256K).",
+    "did": "did:plc:3znwyhr2wogfy4nyhy4daii4",
+    "captured": "2026-08-20",
+    "signing_input": "eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJhdHByb3RvLXNwYWNlLWRlbGVnYXRpb24rand0Iiwia2lkIjoiI2F0cHJvdG8ifQ.eyJpc3MiOiJkaWQ6cGxjOjN6bnd5aHIyd29nZnk0bnloeTRkYWlpNCIsInN1YiI6ImF0Oi8vZGlkOnBsYzozem53eWhyMndvZ2Z5NG55aHk0ZGFpaTQvc3BhY2UvY29tLnNvY2lhbGRlcHQuc2NyYXRjaC5wcm9iZS9maXh0dXJlIiwiYXVkIjoiZGlkOnBsYzozem53eWhyMndvZ2Z5NG55aHk0ZGFpaTQjYXRwcm90b19zcGFjZV9ob3N0IiwiaWF0IjoxNzg3MjgzNjMxLCJleHAiOjE3ODcyODM2OTEsImp0aSI6IjVjZjA4YjUzZTVkZjViNjY0NzA2MzdiMWFiZGIyMWFiIn0",
+    "signature": "\/wgip7SFqF\/jF8jGYOzdzK\/aRp77xFyzrYwJse3fT5BHMZRt9mH6ZxGaYnV4zgq3xQUM12AozP\/DQkuJTR9PCQ=="
+}

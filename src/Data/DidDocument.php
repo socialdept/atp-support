@@ -53,6 +53,33 @@ class DidDocument
     }
 
     /**
+     * Get a published signing key as a `did:key`, by verification-method fragment.
+     *
+     * Defaults to `#atproto`, the repo signing key every account publishes and
+     * the one that signs service auth, space commits, and space tokens. Ids are
+     * written both bare (`#atproto`) and fully qualified (`did:plc:x#atproto`)
+     * in the wild, so either matches.
+     */
+    public function getSigningKey(string $fragment = '#atproto'): ?string
+    {
+        foreach ($this->verificationMethod as $method) {
+            $id = $method['id'] ?? null;
+
+            if (! is_string($id) || ($id !== $fragment && ! str_ends_with($id, $fragment))) {
+                continue;
+            }
+
+            $multibase = $method['publicKeyMultibase'] ?? null;
+
+            if (is_string($multibase) && $multibase !== '') {
+                return 'did:key:'.$multibase;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get the handle from alsoKnownAs.
      */
     public function getHandle(): ?string
