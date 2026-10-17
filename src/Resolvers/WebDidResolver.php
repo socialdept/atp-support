@@ -20,10 +20,10 @@ class WebDidResolver implements DidResolver
     /**
      * Create a new Web DID resolver instance.
      */
-    public function __construct(?int $timeout = null)
+    public function __construct(?int $timeout = null, ?float $connectTimeout = null)
     {
         $this->client = new Client([
-            'timeout' => $timeout ?? $this->getConfig('atp-support.timeout', 10),
+            ...$this->timeouts($timeout, $connectTimeout),
             'headers' => [
                 'Accept' => 'application/json',
                 'User-Agent' => 'Beacon/1.0',

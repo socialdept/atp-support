@@ -23,12 +23,14 @@ class PlcDidResolver implements DidResolver
      * Create a new PLC DID resolver instance.
      *
      * @param  string  $plcDirectory  The PLC directory URL
+     * @param  int|null  $timeout  Seconds for the whole request
+     * @param  float|null  $connectTimeout  Seconds to connect
      */
-    public function __construct(?string $plcDirectory = null, ?int $timeout = null)
+    public function __construct(?string $plcDirectory = null, ?int $timeout = null, ?float $connectTimeout = null)
     {
         $this->plcDirectory = $plcDirectory ?? $this->getConfig('atp-support.plc_directory', 'https://plc.directory');
         $this->client = new Client([
-            'timeout' => $timeout ?? $this->getConfig('atp-support.timeout', 10),
+            ...$this->timeouts($timeout, $connectTimeout),
             'headers' => [
                 'Accept' => 'application/json',
                 'User-Agent' => 'Beacon/1.0',

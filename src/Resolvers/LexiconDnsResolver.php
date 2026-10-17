@@ -14,6 +14,11 @@ class LexiconDnsResolver
     protected int $httpTimeout;
 
     /**
+     * HTTP connect timeout in seconds.
+     */
+    protected float $connectTimeout;
+
+    /**
      * Resolver instance.
      */
     protected Resolver $resolver;
@@ -21,10 +26,11 @@ class LexiconDnsResolver
     /**
      * Create a new LexiconDnsResolver.
      */
-    public function __construct(Resolver $resolver, int $httpTimeout = 10)
+    public function __construct(Resolver $resolver, int $httpTimeout = 10, float $connectTimeout = 2)
     {
         $this->resolver = $resolver;
         $this->httpTimeout = $httpTimeout;
+        $this->connectTimeout = $connectTimeout;
     }
 
     /**
@@ -92,7 +98,7 @@ class LexiconDnsResolver
      */
     public function retrieveSchema(string $pdsEndpoint, string $did, string $nsid): array
     {
-        $response = Http::timeout($this->httpTimeout)
+        $response = Http::timeout($this->httpTimeout)->connectTimeout($this->connectTimeout)
             ->get("{$pdsEndpoint}/xrpc/com.atproto.repo.getRecord", [
                 'repo' => $did,
                 'collection' => 'com.atproto.lexicon.schema',
