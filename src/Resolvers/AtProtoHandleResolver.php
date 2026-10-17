@@ -22,11 +22,11 @@ class AtProtoHandleResolver implements HandleResolutionMethod, HandleResolver
      *
      * @param  string|null  $pdsEndpoint  The PDS endpoint to use for resolution
      */
-    public function __construct(?string $pdsEndpoint = null, ?int $timeout = null)
+    public function __construct(?string $pdsEndpoint = null, ?int $timeout = null, ?float $connectTimeout = null)
     {
         $this->pdsEndpoint = $pdsEndpoint ?? $this->getConfig('atp-support.pds_endpoint', 'https://bsky.social');
         $this->client = new Client([
-            'timeout' => $timeout ?? $this->getConfig('atp-support.timeout', 10),
+            ...$this->timeouts($timeout, $connectTimeout),
             'headers' => [
                 'Accept' => 'application/json',
                 'User-Agent' => 'Beacon/1.0',

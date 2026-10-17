@@ -13,10 +13,10 @@ class WellKnownHandleResolver implements HandleResolutionMethod
 
     protected Client $client;
 
-    public function __construct(?Client $client = null, ?int $timeout = null)
+    public function __construct(?Client $client = null, ?int $timeout = null, ?float $connectTimeout = null)
     {
         $this->client = $client ?? new Client([
-            'timeout' => $timeout ?? $this->getConfig('atp-support.timeout', 10),
+            ...$this->timeouts($timeout, $connectTimeout),
             'headers' => [
                 'Accept' => 'text/plain',
                 'User-Agent' => 'Beacon/1.0',

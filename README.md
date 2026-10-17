@@ -81,7 +81,8 @@ return [
     'plc_directory' => env('ATP_PLC_DIRECTORY', 'https://plc.directory'),
     'pds_endpoint' => env('ATP_PDS_ENDPOINT', 'https://bsky.social'),
     'public_api' => env('ATP_PUBLIC_API', 'https://public.api.bsky.app'),
-    'timeout' => env('ATP_RESOLVER_TIMEOUT', 10),
+    'timeout' => env('ATP_RESOLVER_TIMEOUT', 5),
+    'connect_timeout' => env('ATP_RESOLVER_CONNECT_TIMEOUT', 2),
     'cache' => [
         'enabled' => env('ATP_RESOLVER_CACHE_ENABLED', true),
         'did_ttl' => env('ATP_RESOLVER_CACHE_DID_TTL', 3600),
@@ -90,6 +91,8 @@ return [
     ],
 ];
 ```
+
+Resolution often runs while a user waits, for example verifying a service auth token or starting a login. `timeout` bounds a whole request and `connect_timeout` bounds connecting, so an unreachable host fails in two seconds rather than holding the request. Both apply to every DID and handle resolver and, for connecting, to the Microcosm clients.
 
 Other `atp-*` packages read shared values like `public_api` directly from this config.
 

@@ -44,12 +44,16 @@ return [
     | Request Timeout
     |--------------------------------------------------------------------------
     |
-    | The timeout in seconds for HTTP requests to external services when
-    | resolving DIDs, handles, and lexicons.
+    | Seconds for a whole HTTP request to an external service when resolving
+    | DIDs and handles, and seconds to establish its connection. Resolution
+    | often runs while a user waits (verifying a service auth token, starting
+    | a login), so an unreachable host should fail fast.
     |
     */
 
-    'timeout' => env('ATP_RESOLVER_TIMEOUT', 10),
+    'timeout' => env('ATP_RESOLVER_TIMEOUT', 5),
+
+    'connect_timeout' => env('ATP_RESOLVER_CONNECT_TIMEOUT', 2),
 
     /*
     |--------------------------------------------------------------------------

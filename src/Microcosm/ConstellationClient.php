@@ -16,7 +16,7 @@ class ConstellationClient
 
     protected string $baseUrl;
 
-    public function __construct(?string $baseUrl = null, ?int $timeout = null)
+    public function __construct(?string $baseUrl = null, ?int $timeout = null, ?float $connectTimeout = null)
     {
         $this->baseUrl = rtrim(
             $baseUrl ?? $this->getConfig('atp-support.microcosm.constellation.url', 'https://constellation.microcosm.blue'),
@@ -25,6 +25,7 @@ class ConstellationClient
 
         $this->client = new Client([
             'timeout' => $timeout ?? $this->getConfig('atp-support.microcosm.constellation.timeout', 10),
+            'connect_timeout' => $connectTimeout ?? $this->getConfig('atp-support.connect_timeout', 2),
             'headers' => [
                 'Accept' => 'application/json',
                 'User-Agent' => 'Beacon/1.0',
