@@ -100,4 +100,10 @@ class NsidTest extends TestCase
 
         Nsid::parse('two.segments');
     }
+
+    public function test_lexicon_dns_name_is_per_authority(): void
+    {
+        $this->assertSame('_lexicon.example.com', Nsid::parse('com.example.thing')->lexiconDnsName());
+        $this->assertSame('_lexicon.feed.example.com', Nsid::parse('com.example.feed.post')->lexiconDnsName());
+    }
 }

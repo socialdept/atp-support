@@ -157,4 +157,15 @@ class Nsid implements Stringable
 
         return implode('.', array_reverse($authoritySegments));
     }
+
+    /**
+     * The DNS name whose TXT record names the DID publishing this NSID's
+     * lexicon, such as _lexicon.example.com for com.example.thing.
+     * Resolution is not hierarchical: com.example.feed.post needs
+     * _lexicon.feed.example.com, and com.example's record does not cover it.
+     */
+    public function lexiconDnsName(): string
+    {
+        return '_lexicon.'.$this->getAuthorityDomain();
+    }
 }

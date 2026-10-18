@@ -191,6 +191,7 @@ $nsid->getName();            // post
 $nsid->getSegments();        // ['app', 'bsky', 'feed', 'post']
 $nsid->toDomain();           // post.feed.bsky.app
 $nsid->getAuthorityDomain(); // feed.bsky.app
+$nsid->lexiconDnsName();     // _lexicon.feed.bsky.app
 
 // Validation
 Nsid::isValid('app.bsky.feed.post');  // true
@@ -209,13 +210,24 @@ use SocialDept\AtpSupport\Resolvers\LexiconDnsResolver;
 
 $resolver = app(LexiconDnsResolver::class);
 
-// Full pipeline: DNS lookup -> DID resolution -> XRPC fetch
+// The schema with its record: did, uri, cid and schema. Null when the
+// authority names no DID in DNS, or has not published one.
+$published = $resolver->fetch('com.example.myrecord');
+
+// What a given repo publishes, before or regardless of DNS
+$published = $resolver->fetchFrom('did:plc:abc', 'com.example.myrecord');
+
+// Full pipeline, answering the record value or throwing
 $schema = $resolver->resolve('com.example.myrecord');
 
 // Individual steps
-$did = $resolver->lookupDns('example.com');
+$did = $resolver->lookupDns('com.example');   // reads _lexicon.example.com
 $schema = $resolver->retrieveSchema($pdsEndpoint, $did, 'com.example.myrecord');
 ```
+
+`fetch()` and `fetchFrom()` answer null for a lexicon that is not published, and throw `LexiconResolutionException` when the authority cannot be read: its DID names no PDS, the PDS is down, or it returns something that is not a schema. Keep the two apart before acting on a missing schema.
+
+Resolution is not hierarchical. Each authority needs its own TXT record, so `com.example.feed.post` is looked up at `_lexicon.feed.example.com` and is not covered by `com.example`'s. Pass a `dnsLookup` callable to the constructor to replace `dns_get_record` in tests.
 
 ### Microcosm
 
