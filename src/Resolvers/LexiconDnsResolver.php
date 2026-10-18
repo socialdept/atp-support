@@ -3,11 +3,23 @@
 namespace SocialDept\AtpSupport\Resolvers;
 
 use Illuminate\Support\Facades\Http;
+use SocialDept\AtpSupport\Data\PublishedLexicon;
+use SocialDept\AtpSupport\Exceptions\LexiconResolutionException;
+use SocialDept\AtpSupport\Identity;
 use SocialDept\AtpSupport\Nsid;
 use SocialDept\AtpSupport\Resolver;
 
+/**
+ * Lexicons as the network publishes them.
+ *
+ * An NSID's authority publishes a TXT record at _lexicon.<authority domain>
+ * holding did=<DID>, and the schema as a com.atproto.lexicon.schema record,
+ * keyed by the NSID, in that DID's repo.
+ */
 class LexiconDnsResolver
 {
+    public const COLLECTION = 'com.atproto.lexicon.schema';
+
     /**
      * HTTP timeout in seconds.
      */
@@ -23,14 +35,20 @@ class LexiconDnsResolver
      */
     protected Resolver $resolver;
 
+    /** @var callable(string, int): array|false */
+    protected $dnsLookup;
+
     /**
      * Create a new LexiconDnsResolver.
+     *
+     * @param  callable|null  $dnsLookup  Custom DNS lookup function for testing. Signature: (string $hostname, int $type): array|false
      */
-    public function __construct(Resolver $resolver, int $httpTimeout = 10, float $connectTimeout = 2)
+    public function __construct(Resolver $resolver, int $httpTimeout = 10, float $connectTimeout = 2, ?callable $dnsLookup = null)
     {
         $this->resolver = $resolver;
         $this->httpTimeout = $httpTimeout;
         $this->connectTimeout = $connectTimeout;
+        $this->dnsLookup = $dnsLookup ?? 'dns_get_record';
     }
 
     /**
@@ -42,22 +60,73 @@ class LexiconDnsResolver
      */
     public function resolve(string $nsid): array
     {
-        $nsidParsed = Nsid::parse($nsid);
-
-        // Step 1: Query DNS TXT record for DID
-        $did = $this->lookupDns($nsidParsed->getAuthority());
-        if ($did === null) {
-            throw new \RuntimeException("No DID found for NSID: {$nsid}");
+        try {
+            $published = $this->fetch($nsid);
+        } catch (LexiconResolutionException $e) {
+            throw new \RuntimeException($e->getMessage(), 0, $e);
         }
 
-        // Step 2: Resolve DID to PDS endpoint
-        $pdsUrl = $this->resolver->resolvePds($did);
-        if ($pdsUrl === null) {
-            throw new \RuntimeException("No PDS endpoint found for DID: {$did}");
+        if ($published === null) {
+            throw new \RuntimeException("No published lexicon found for NSID: {$nsid}");
         }
 
-        // Step 3: Fetch lexicon schema from repository
-        return $this->retrieveSchema($pdsUrl, $did, $nsid);
+        // As the record value, the way this has always answered.
+        return ['$type' => self::COLLECTION, ...$published->schema];
+    }
+
+    /**
+     * The published lexicon, with the repo, URI and CID of its record. Null
+     * when the authority names no DID in DNS, or has not published one.
+     *
+     * @throws LexiconResolutionException when the authority's PDS cannot be read
+     */
+    public function fetch(string $nsid): ?PublishedLexicon
+    {
+        $did = $this->lookupDns(Nsid::parse($nsid)->getAuthority());
+
+        return $did === null ? null : $this->fetchFrom($did, $nsid);
+    }
+
+    /**
+     * The lexicon a given repo publishes for an NSID, or null if it has none.
+     * Useful to check a repo before DNS points at it.
+     *
+     * @throws LexiconResolutionException when the repo's PDS cannot be read
+     */
+    public function fetchFrom(string $did, string $nsid): ?PublishedLexicon
+    {
+        $pds = $this->resolver->resolvePds($did)
+            ?? throw LexiconResolutionException::unreachable($nsid, "{$did} names no PDS");
+
+        try {
+            $response = $this->getRecord($pds, $did, $nsid);
+        } catch (\Throwable $e) {
+            throw LexiconResolutionException::unreachable($nsid, $e->getMessage());
+        }
+
+        if ($response->status() === 400 && in_array($response->json('error'), ['RecordNotFound', 'NotFound'], true)) {
+            return null;
+        }
+
+        if (! $response->successful()) {
+            throw LexiconResolutionException::unreachable($nsid, "{$pds} answered HTTP {$response->status()}");
+        }
+
+        $value = $response->json('value');
+
+        if (! is_array($value) || ! isset($value['lexicon'])) {
+            throw LexiconResolutionException::unreachable($nsid, "{$pds} returned a record that is not a lexicon");
+        }
+
+        unset($value['$type']);
+
+        return new PublishedLexicon(
+            nsid: $nsid,
+            did: $did,
+            uri: is_string($uri = $response->json('uri')) ? $uri : 'at://'.$did.'/'.self::COLLECTION.'/'.$nsid,
+            cid: is_string($cid = $response->json('cid')) ? $cid : null,
+            schema: $value,
+        );
     }
 
     /**
@@ -73,7 +142,7 @@ class LexiconDnsResolver
         $hostname = "_lexicon.{$domain}";
 
         try {
-            $records = dns_get_record($hostname, DNS_TXT);
+            $records = ($this->dnsLookup)($hostname, DNS_TXT);
 
             if ($records === false || empty($records)) {
                 return null;
@@ -81,11 +150,13 @@ class LexiconDnsResolver
 
             // Look for TXT record with did= prefix
             foreach ($records as $record) {
-                if (isset($record['txt']) && str_starts_with($record['txt'], 'did=')) {
-                    return substr($record['txt'], 4); // Remove 'did=' prefix
+                $txt = $record['txt'] ?? '';
+
+                if (str_starts_with($txt, 'did=') && Identity::isDid($did = substr($txt, 4))) {
+                    return $did;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable) {
             // DNS query failed
             return null;
         }
@@ -98,12 +169,7 @@ class LexiconDnsResolver
      */
     public function retrieveSchema(string $pdsEndpoint, string $did, string $nsid): array
     {
-        $response = Http::timeout($this->httpTimeout)->connectTimeout($this->connectTimeout)
-            ->get("{$pdsEndpoint}/xrpc/com.atproto.repo.getRecord", [
-                'repo' => $did,
-                'collection' => 'com.atproto.lexicon.schema',
-                'rkey' => $nsid,
-            ]);
+        $response = $this->getRecord($pdsEndpoint, $did, $nsid);
 
         if (! $response->successful()) {
             throw new \RuntimeException("Failed to retrieve schema for NSID: {$nsid}");
@@ -117,5 +183,16 @@ class LexiconDnsResolver
         }
 
         throw new \RuntimeException("Invalid schema response for NSID: {$nsid}");
+    }
+
+    protected function getRecord(string $pdsEndpoint, string $did, string $nsid): \Illuminate\Http\Client\Response
+    {
+        return Http::timeout($this->httpTimeout)->connectTimeout($this->connectTimeout)
+            ->acceptJson()
+            ->get(rtrim($pdsEndpoint, '/').'/xrpc/com.atproto.repo.getRecord', [
+                'repo' => $did,
+                'collection' => self::COLLECTION,
+                'rkey' => $nsid,
+            ]);
     }
 }
