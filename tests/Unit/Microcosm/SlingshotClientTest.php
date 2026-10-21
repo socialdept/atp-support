@@ -3,13 +3,16 @@
 namespace SocialDept\AtpSupport\Tests\Unit\Microcosm;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use SocialDept\AtpSupport\Microcosm\Data\GetRecordResponse;
 use SocialDept\AtpSupport\Microcosm\Data\MiniDoc;
 use SocialDept\AtpSupport\Microcosm\MicrocosmException;
+use SocialDept\AtpSupport\Microcosm\RecordNotFoundException;
 use SocialDept\AtpSupport\Microcosm\SlingshotClient;
 
 class SlingshotClientTest extends TestCase
@@ -122,5 +125,46 @@ class SlingshotClientTest extends TestCase
         $this->expectExceptionMessage('invalid response');
 
         $client->resolveMiniDoc('did:plc:test');
+    }
+
+    public function test_a_missing_record_is_told_apart_from_a_service_that_is_down(): void
+    {
+        $client = $this->createClientWithMock(new MockHandler([
+            new Response(400, [], json_encode(['error' => 'RecordNotFound', 'message' => 'Could not locate record'])),
+            new Response(500, [], json_encode(['error' => 'ServerError', 'message' => 'sorry, something went wrong'])),
+            new ConnectException('Connection refused', new Request('GET', 'https://slingshot.test')),
+            new Response(400, [], json_encode(['error' => 'InvalidRequest', 'message' => 'Errored while trying to resolve handle to DID'])),
+        ]));
+
+        $missing = $this->failure(fn () => $client->getRecord('did:plc:abc', 'app.bsky.feed.post', 'gone'));
+        $this->assertInstanceOf(RecordNotFoundException::class, $missing);
+        $this->assertSame(400, $missing->status);
+        $this->assertFalse($missing->isUnavailable());
+        $this->assertStringContainsString('Could not locate record', $missing->getMessage());
+
+        $down = $this->failure(fn () => $client->getRecordByUri('at://did:plc:abc/app.bsky.feed.post/rk1'));
+        $this->assertNotInstanceOf(RecordNotFoundException::class, $down);
+        $this->assertSame('ServerError', $down->error);
+        $this->assertTrue($down->isUnavailable());
+
+        $unreachable = $this->failure(fn () => $client->getRecord('did:plc:abc', 'app.bsky.feed.post', 'rk1'));
+        $this->assertNull($unreachable->status);
+        $this->assertTrue($unreachable->isUnavailable());
+
+        $refused = $this->failure(fn () => $client->resolveMiniDoc('nobody.example'));
+        $this->assertNotInstanceOf(RecordNotFoundException::class, $refused);
+        $this->assertSame('InvalidRequest', $refused->error);
+        $this->assertFalse($refused->isUnavailable());
+    }
+
+    private function failure(callable $call): MicrocosmException
+    {
+        try {
+            $call();
+        } catch (MicrocosmException $e) {
+            return $e;
+        }
+
+        $this->fail('Expected a MicrocosmException.');
     }
 }

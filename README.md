@@ -292,6 +292,24 @@ $doc->pds;        // https://puffball.us-east.host.bsky.network
 $doc->signingKey; // Public signing key
 ```
 
+#### Errors
+
+Both clients throw `MicrocosmException`. When the service answered with an XRPC error, `error` names it and `status` is the HTTP status, so a missing record is told apart from a service that is down:
+
+```php
+use SocialDept\AtpSupport\Microcosm\MicrocosmException;
+use SocialDept\AtpSupport\Microcosm\RecordNotFoundException;
+
+try {
+    $record = $slingshot->getRecord($did, 'app.bsky.actor.profile', 'self');
+} catch (RecordNotFoundException) {
+    $record = null;              // not there: safe to remember
+} catch (MicrocosmException $e) {
+    $e->isUnavailable();         // true without a response or on a 5xx: try again later
+    $e->error;                   // such as 'InvalidRequest', or null
+}
+```
+
 #### Microcosm Facade
 
 Access both clients through a single facade:

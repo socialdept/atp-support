@@ -160,7 +160,7 @@ class ConstellationClient
 
             return $data;
         } catch (GuzzleException $e) {
-            throw MicrocosmException::requestFailed($endpoint, $e->getMessage());
+            throw MicrocosmException::fromGuzzle($endpoint, $e);
         }
     }
 }

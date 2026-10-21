@@ -164,4 +164,20 @@ class ConstellationClientTest extends TestCase
 
         $client->getBacklinksCount('did:plc:test', 'app.bsky.feed.like:subject.uri');
     }
+
+    public function test_a_service_error_keeps_its_name_and_status(): void
+    {
+        $client = $this->createClientWithMock(new MockHandler([
+            new Response(503, [], json_encode(['error' => 'ServiceUnavailable', 'message' => 'busy'])),
+        ]));
+
+        try {
+            $client->getBacklinksCount('did:plc:abc', 'app.bsky.graph.follow:subject');
+            $this->fail('Expected a MicrocosmException.');
+        } catch (\SocialDept\AtpSupport\Microcosm\MicrocosmException $e) {
+            $this->assertSame('ServiceUnavailable', $e->error);
+            $this->assertSame(503, $e->status);
+            $this->assertTrue($e->isUnavailable());
+        }
+    }
 }
